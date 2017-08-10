@@ -137,14 +137,13 @@ class RPN(snt.AbstractModule):
         proposal_prediction = self._proposal(
             rpn_cls_prob, rpn_bbox_pred, all_anchors, image_shape)
 
-        if is_training:
-            # When training we use a separate module to calculate the target
-            # values we want to output.
-            (rpn_cls_target, rpn_bbox_target,
-             rpn_max_overlap) = self._anchor_target(
-                tf.shape(pretrained_feature_map), gt_boxes, image_shape,
-                all_anchors
-            )
+        # Calcluate the target values we want to output (used for the loss).
+        (
+            rpn_cls_target, rpn_bbox_target, rpn_max_overlap
+        ) = self._anchor_target(
+            tf.shape(pretrained_feature_map), gt_boxes, image_shape,
+            all_anchors
+        )
 
         # TODO: Better way to log variable summaries.
         # variable_summaries(self._rpn.w, 'rpn_conv_W', ['rpn'])
@@ -167,20 +166,17 @@ class RPN(snt.AbstractModule):
         prediction_dict = {
             'proposals': proposal_prediction['nms_proposals'],
             'scores': proposal_prediction['nms_proposals_scores'],
+
+            'rpn_cls_prob': rpn_cls_prob,
+            'rpn_cls_score': rpn_cls_score,
+            'rpn_bbox_pred': rpn_bbox_pred,
+            'rpn_cls_target': rpn_cls_target,
+            'rpn_bbox_target': rpn_bbox_target,
         }
 
         if self._debug:
             prediction_dict['proposal_prediction'] = proposal_prediction
-
-        if is_training:
-            prediction_dict['rpn_cls_prob'] = rpn_cls_prob
-            prediction_dict['rpn_cls_score'] = rpn_cls_score
-            prediction_dict['rpn_bbox_pred'] = rpn_bbox_pred
-            prediction_dict['rpn_cls_target'] = rpn_cls_target
-            prediction_dict['rpn_bbox_target'] = rpn_bbox_target
-
-            if self._debug:
-                prediction_dict['rpn_max_overlap'] = rpn_max_overlap
+            prediction_dict['rpn_max_overlap'] = rpn_max_overlap
 
         return prediction_dict
 
