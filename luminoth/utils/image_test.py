@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
-from luminoth.utils.image import resize_image, flip_image
+from luminoth.utils.image import resize_image, flip_image, random_patch
 from luminoth.utils.test.gt_boxes import generate_gt_boxes
 
 
@@ -55,6 +55,13 @@ class ImageTest(tf.test.TestCase):
         with self.test_session() as sess:
             flipped_dict = sess.run(flipped, feed_dict=feed_dict)
             return flipped_dict['image'], flipped_dict.get('bboxes')
+
+    def _random_patch(self, image, bboxes=None):
+        with self.test_session() as sess:
+            # passing bboxes=None throws an error.
+            patch = random_patch(image, bboxes=bboxes, debug=True)
+            return_dict = sess.run(patch)
+            return return_dict['image'], return_dict['bboxes']
 
     def testResizeOnlyImage(self):
         # No min or max size, it doesn't change the image.
@@ -260,6 +267,45 @@ class ImageTest(tf.test.TestCase):
         self.assertAllClose(
             flipped_boxes_float, flipped_boxes_int
         )
+
+    def testRandomPatchWithBboxes(self):
+        """Tests the integrity of the return values of random_patch
+
+        When bboxes is not None.
+        """
+        im_shape = (800, 600, 3)
+        total_boxes = 20
+        # We don't care about the label
+        label = 3
+        image, bboxes = self._get_image_with_boxes(im_shape, total_boxes)
+        # Add a label to each bbox.
+        bboxes_w_label = tf.concat(
+            [
+                bboxes,
+                tf.fill((bboxes.shape[0], 1), label)
+            ],
+            axis=1
+        )
+        ret_image, ret_bboxes = self._random_patch(image, bboxes_w_label)
+        # Assertions
+        self.assertLessEqual(ret_bboxes.shape[0], total_boxes)
+        for bbox in ret_bboxes:
+            self.assertAllEqual(bbox >= 0, True)
+            self.assertAllEqual(bbox <= ret_image.shape[1], True)
+        self.assertAllEqual(ret_image.shape <= im_shape, True)
+
+    def testRandomPatchWithoutBboxes(self):
+        """Tests the integrity of the return values of random_patch
+
+        When bboxes is None.
+        """
+        im_shape = (600, 800, 3)
+        image = self._gen_image(*im_shape)
+        ret_image, ret_bboxes = self._random_patch(image)
+        # Assertions
+        # ret_bboxes retuns -1 if we didn't pass any boxes, for debugging.
+        self.assertEqual(ret_bboxes, -1.)
+        self.assertAllEqual(ret_image.shape <= im_shape, True)
 
 
 if __name__ == '__main__':

@@ -42,7 +42,7 @@ def resize_image(image, bboxes=None, min_size=None, max_size=None):
     else:
         upscale_factor = tf.constant(1.)
 
-    if max_size:
+    if max_size is not None:
         # We do the same calculating the downscale factor, to end up with an
         # image where the biggest dimension is less than `image_max_size`.
         # When the image is small enough the scale factor is 1. (no change)
@@ -86,29 +86,39 @@ def resize_image(image, bboxes=None, min_size=None, max_size=None):
         return {
             'image': image,
             'bboxes': bboxes,
+            # scale_factor currently isn't used.
             'scale_factor': scale_factor,
         }
 
     return {
         'image': image,
+        # scale_factor currently isn't used.
         'scale_factor': scale_factor,
     }
 
 
-def flip_image(image, bboxes=None, left_right=True, up_down=False):
+def flip_image(image, config, bboxes=None):
     """Flips image on its axis for data augmentation.
 
     Args:
         image: Tensor with image of shape (H, W, 3).
+        config: EasyDict
+            left_right: Boolean flag to flip the image horizontally
+                (left to right).
+            up_down: Boolean flag to flip the image vertically (upside down)
         bboxes: Optional Tensor with bounding boxes with shape
             (total_bboxes, 5).
-        left_right: Boolean flag to flip the image horizontally
-            (left to right).
-        up_down: Boolean flag to flip the image vertically (upside down)
     Returns:
         image: Flipped image with the same shape.
         bboxes: Tensor with the same shape.
     """
+    if 'left_right' not in config or 'up_down' not in config:
+        raise KeyError(
+            "flip_image's config should include 'left_right'"
+            " and 'up_down' as keys."
+        )
+    left_right = config.left_right
+    up_down = config.up_down
 
     image_shape = tf.shape(image)
     height = image_shape[0]
@@ -151,33 +161,43 @@ def flip_image(image, bboxes=None, left_right=True, up_down=False):
     return return_dict
 
 
-def random_patch(image, bboxes=None, debug=False):
+def random_patch(image, config, bboxes=None, debug=False):
     """Gets a random patch from an image.
 
     Args:
         image: Tensor with shape (H, W, 3).
+        config: EasyDict
+            min_height: Minimum height of the patch.
+            min_width: Minimum width of the patch.
         bboxes: Tensor with the ground-truth boxes. Shaped (total_boxes, 5).
             The last element in each box is the category label.
+        debug: Boolean. If True, random seeds will be set to 0.
 
     Returns:
         image: Tensor with shape (H', W', 3), with H' <= H and W' <= W. A
             random patch of the input image.
         bboxes: Tensor with shape (new_total_boxes, 5), where we keep
             bboxes that have their center inside the patch, cropping
-            them to the patch boundaries.
+            them to the patch boundaries. If we didn't get any bboxes, then
+            it's set as -1.
     """
+    if 'min_height' not in config or 'min_width' not in config:
+        raise KeyError(
+            "random_patch's config should include 'min_height'"
+            " and 'min_width' as keys."
+        )
     if debug:
         seed = 0
     else:
         seed = None
-    # See the documentation on tf.crop_to_bounding_box for the meaning of
+    # See the documentation on tf.image.crop_to_bounding_box for the meaning of
     # these variables.
     offset_width = tf.random_uniform(
         shape=[],
         minval=0,
         maxval=tf.subtract(
             tf.shape(image)[1],
-            1
+            config.min_width
         ),
         dtype=tf.int32,
         seed=seed
@@ -187,14 +207,14 @@ def random_patch(image, bboxes=None, debug=False):
         minval=0,
         maxval=tf.subtract(
             tf.shape(image)[0],
-            1
+            config.min_height
         ),
         dtype=tf.int32,
         seed=seed
     )
     target_width = tf.random_uniform(
         shape=[],
-        minval=1,
+        minval=config.min_width,
         maxval=tf.subtract(
             tf.shape(image)[1],
             offset_width
@@ -204,7 +224,7 @@ def random_patch(image, bboxes=None, debug=False):
     )
     target_height = tf.random_uniform(
         shape=[],
-        minval=1,
+        minval=config.min_height,
         maxval=tf.subtract(
             tf.shape(image)[0],
             offset_height
@@ -214,15 +234,14 @@ def random_patch(image, bboxes=None, debug=False):
     )
     new_image = tf.image.crop_to_bounding_box(
         image,
-        offset_height, offset_width,
-        target_height, target_width
+        offset_height=offset_height, offset_width=offset_width,
+        target_height=target_height, target_width=target_width
     )
 
     return_dict = {'image': new_image}
 
     # Return if we didn't have bboxes.
     if bboxes is None:
-        return_dict['bboxes'] = tf.constant(-1.)
         return return_dict
 
     # Now we will remove all bboxes whose centers are not inside the cropped
@@ -306,3 +325,75 @@ def random_patch(image, bboxes=None, debug=False):
     )
     return_dict['bboxes'] = new_bboxes
     return return_dict
+
+
+def random_resize(image, config, bboxes=None, debug=False):
+    """Randomly resizes an image within limits.
+
+    Args:
+        image: Tensor with shape (H, W, 3)
+        config: EasyDict
+            min_size: minimum side-size of the resized image.
+            max_size: maximum side-size of the resized image.
+        bboxes: Tensor with the ground-truth boxes. Shaped (total_boxes, 5).
+            The last element in each box is the category label.
+        debug: Boolean. If True, random seeds will be set to 0.
+
+    Returns:
+        image: Tensor with shape (H', W', 3), satisfying the following.
+            min_size <= H' <= H
+            min_size <= W' <= W
+        bboxes: Tensor with the same shape as the input bboxes. Or -1 if we
+            didn't pass any bboxes.
+        scale_factor: Scale factor used to modify the image.
+    """
+    if 'min_size' not in config or 'max_size' not in config:
+        raise KeyError(
+            "random_resize's config should include 'min_size'"
+            " and 'max_size' as keys."
+        )
+    if debug:
+        seed = 0
+    else:
+        seed = None
+    new_size = tf.random_uniform(
+        shape=[],
+        minval=config.min_size,
+        maxval=config.max_size,
+        dtype=tf.int32,
+        seed=seed,
+    )
+    resized_dict = resize_image(
+        image,
+        bboxes=bboxes,
+        min_size=new_size,
+        # Make min_size < max_size for robustness.
+        max_size=tf.add(new_size, 1),
+    )
+    return resized_dict
+
+
+def random_distortion(image, config, debug=False):
+    """Photometrically distorts an image.
+
+    This includes changing the brightness and contrast and slightly changing
+    the color.
+
+    Args:
+        image: Tensor with shape (H, W, 3)
+        config: Dictionary with
+            brightness:
+                enable: Boolean
+                max_delta: non-negative float
+            contrast:
+                enable: Boolean
+                lower: non-negative float
+                upper: non-negative float
+            hue:
+                enable: Boolean
+                max_delta: float in [0, 0.5]
+        debug: Boolean. If True, random seeds will be set to 0.
+
+    Returns:
+        Distorted image with the same shape as the input image.
+    """

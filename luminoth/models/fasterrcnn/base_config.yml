@@ -65,6 +65,13 @@ dataset:
         left_right: True
         up_down: False
         prob: 0.5
+    - patch:
+        min_height: 80
+        min_width: 60
+        prob: 0.4
+    - resize:
+        min_size: 80
+        max_size: 800
 
 network:
   # Total number of classes to predict
