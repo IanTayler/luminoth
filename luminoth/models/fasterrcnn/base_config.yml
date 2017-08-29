@@ -68,7 +68,7 @@ dataset:
     - patch:
         min_height: 80
         min_width: 60
-        prob: 0.4
+        prob: 0.0
     - resize:
         min_size: 80
         max_size: 800

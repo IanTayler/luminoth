@@ -303,8 +303,6 @@ class ImageTest(tf.test.TestCase):
         image = self._gen_image(*im_shape)
         ret_image, ret_bboxes = self._random_patch(image)
         # Assertions
-        # ret_bboxes retuns -1 if we didn't pass any boxes, for debugging.
-        self.assertEqual(ret_bboxes, -1.)
         self.assertAllEqual(ret_image.shape <= im_shape, True)
 
 

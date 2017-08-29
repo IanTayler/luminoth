@@ -86,13 +86,11 @@ def resize_image(image, bboxes=None, min_size=None, max_size=None):
         return {
             'image': image,
             'bboxes': bboxes,
-            # scale_factor currently isn't used.
             'scale_factor': scale_factor,
         }
 
     return {
         'image': image,
-        # scale_factor currently isn't used.
         'scale_factor': scale_factor,
     }
 
@@ -315,11 +313,13 @@ def random_patch(image, config, bboxes=None, debug=False):
     # Finally, we clip the boxes and add back the labels.
     new_bboxes = tf.concat(
         [
-            clip_boxes(
-                new_bboxes_unclipped[:, :4],
-                imshape=tf.shape(new_image)[:2]
+            tf.to_int32(
+                clip_boxes(
+                    new_bboxes_unclipped[:, :4],
+                    imshape=tf.shape(new_image)[:2]
+                ),
             ),
-            tf.cast(masked_bboxes[:, 4:], tf.float32)
+            masked_bboxes[:, 4:]
         ],
         axis=1
     )
@@ -370,7 +370,13 @@ def random_resize(image, config, bboxes=None, debug=False):
         # Make min_size < max_size for robustness.
         max_size=tf.add(new_size, 1),
     )
-    return resized_dict
+    # Our returned dict needs to have a fixed size. So we can't
+    # return the scale_factor that resize_image returns.
+    return_dict = {
+        'image': resized_dict['image'],
+        'bboxes': resized_dict['bboxes']
+    }
+    return return_dict
 
 
 def random_distortion(image, config, debug=False):

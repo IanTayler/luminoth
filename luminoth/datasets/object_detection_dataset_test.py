@@ -54,7 +54,7 @@ class ObjectDetectionDatasetTest(tf.test.TestCase):
             [10, 11, 20, 21, 1],
             [19, 30, 31, 33, 1],
         ])
-        config = [{'flip': {'prob': 0}}, {'flip': {'prob': 1}}]
+        config = [{'flip': {'prob': 0.}}, {'flip': {'prob': 1.}}]
 
         image_aug, bboxes_aug, aug = self._run_augment(config, image, bboxes)
         self.assertEqual(aug[0], {'flip': False})
@@ -76,7 +76,7 @@ class ObjectDetectionDatasetTest(tf.test.TestCase):
             [10, 10, 26, 28, 1],
             [19, 30, 31, 33, 1],
         ])
-        config = [{'flip': {'prob': 1}}, {'flip': {'prob': 1}}]
+        config = [{'flip': {'prob': 1.}}, {'flip': {'prob': 1.}}]
 
         image_aug, bboxes_aug, aug = self._run_augment(config, image, bboxes)
         self.assertEqual(aug[0], {'flip': True})

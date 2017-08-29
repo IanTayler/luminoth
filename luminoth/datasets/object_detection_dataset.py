@@ -1,15 +1,14 @@
-import numpy as np
 import sonnet as snt
 import tensorflow as tf
 
 from luminoth.utils.image import (
-    resize_image, flip_image, random_patch,  # random_resize
+    resize_image, flip_image, random_patch, random_resize
 )
 
 DATA_AUGMENTATION_STRATEGIES = {
     'flip': flip_image,
     'patch': random_patch,
-    # 'resize': random_resize,
+    'resize': random_resize,
 }
 
 
@@ -92,38 +91,35 @@ class ObjectDetectionDataset(snt.AbstractModule):
             aug_config = aug_config[aug_type]
             aug_fn = DATA_AUGMENTATION_STRATEGIES[aug_type]
 
-            random_number = np.random.random()
-            print('###########################')
-            print('OH BOI, DEBUGGI TIME')
-            print('RANDOM NUMBER: {}'.format(random_number))
-            prob = aug_config.pop('prob', default_prob)
-            print('PROB {}'.format(prob))
-            apply_aug_strategy = random_number < prob
-            print('APPLY_AUG: {}'.format(apply_aug_strategy))
-            print('AUG_TYPE: {}'.format(aug_type))
-            print('###########################')
+            random_number = tf.random_uniform([])
+            prob = tf.to_float(aug_config.pop('prob', default_prob))
+            apply_aug_strategy = tf.less(prob, random_number)
 
-            if apply_aug_strategy:
-                aug_dict = aug_fn(image, aug_config, bboxes)
-                # Only update image and bboxes if tf.shape(bboxes)[0] > 0.
-                # We don't want patches, etc. that have 0 gt_boxes in them.
-                update_condition = tf.greater(
-                    tf.gather(tf.shape(aug_dict['bboxes']), 0),
-                    0
-                )
-                image = tf.cond(
+            augmented = tf.cond(
+                apply_aug_strategy,
+                lambda: aug_fn(image, aug_config, bboxes),
+                lambda: {'image': image, 'bboxes': bboxes}
+            )
+
+            update_condition = tf.greater(
+                tf.gather(tf.shape(augmented['bboxes']), 0),
+                0
+            )
+            image = tf.cond(
+                update_condition,
+                lambda: augmented['image'],
+                lambda: image
+            )
+            # Hot fix. This works because bboxes is either always or never
+            # None in a single training session.
+            if bboxes is not None:
+                bboxes = tf.cond(
                     update_condition,
-                    lambda: aug_dict['image'],
-                    lambda: image
+                    # TODO: find out why we're sometimes getting float
+                    # bboxes when using random_resize.
+                    lambda: tf.to_int32(augmented['bboxes']),
+                    lambda: bboxes
                 )
-                if 'bboxes' in aug_dict:
-                    bboxes = tf.cond(
-                        update_condition,
-                        # TODO: find out why we're sometimes getting float
-                        # bboxes when using random_resize.
-                        lambda: tf.to_int32(aug_dict['bboxes']),
-                        lambda: bboxes
-                    )
 
             applied_data_augmentation.append({aug_type: apply_aug_strategy})
 
