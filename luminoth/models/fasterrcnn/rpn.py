@@ -110,6 +110,7 @@ class RPN(snt.AbstractModule):
                     we still have a bbox target for each anchors, and it's
                     filled with zeroes when ignored.
         """
+        gt_boxes = tf.Print(gt_boxes, [gt_boxes])
         # We start with a common conv layer applied to the feature map.
         self._instantiate_layers()
         self._proposal = RPNProposal(self._num_anchors, self._config.proposals)

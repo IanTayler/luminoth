@@ -2,13 +2,13 @@ import sonnet as snt
 import tensorflow as tf
 
 from luminoth.utils.image import (
-    resize_image, flip_image, random_patch, random_resize
+    resize_image, flip_image, random_patch  # random_resize
 )
 
 DATA_AUGMENTATION_STRATEGIES = {
     'flip': flip_image,
     'patch': random_patch,
-    'resize': random_resize,
+    # 'resize': random_resize,
 }
 
 
