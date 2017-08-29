@@ -3,13 +3,13 @@ import sonnet as snt
 import tensorflow as tf
 
 from luminoth.utils.image import (
-    resize_image, flip_image, random_patch, random_resize
+    resize_image, flip_image, random_patch,  # random_resize
 )
 
 DATA_AUGMENTATION_STRATEGIES = {
     'flip': flip_image,
     'patch': random_patch,
-    'resize': random_resize,
+    # 'resize': random_resize,
 }
 
 
@@ -93,8 +93,15 @@ class ObjectDetectionDataset(snt.AbstractModule):
             aug_fn = DATA_AUGMENTATION_STRATEGIES[aug_type]
 
             random_number = np.random.random()
+            print('###########################')
+            print('OH BOI, DEBUGGI TIME')
+            print('RANDOM NUMBER: {}'.format(random_number))
             prob = aug_config.pop('prob', default_prob)
+            print('PROB {}'.format(prob))
             apply_aug_strategy = random_number < prob
+            print('APPLY_AUG: {}'.format(apply_aug_strategy))
+            print('AUG_TYPE: {}'.format(aug_type))
+            print('###########################')
 
             if apply_aug_strategy:
                 aug_dict = aug_fn(image, aug_config, bboxes)

@@ -72,6 +72,7 @@ dataset:
     - resize:
         min_size: 80
         max_size: 800
+        prob: 0.0
 
 network:
   # Total number of classes to predict
