@@ -2,13 +2,14 @@ import sonnet as snt
 import tensorflow as tf
 
 from luminoth.utils.image import (
-    resize_image, flip_image, random_patch  # random_resize
+    resize_image, flip_image, random_patch, random_resize, random_distortion
 )
 
 DATA_AUGMENTATION_STRATEGIES = {
     'flip': flip_image,
     'patch': random_patch,
-    # 'resize': random_resize,
+    'resize': random_resize,
+    'distortion': random_distortion
 }
 
 
@@ -93,7 +94,7 @@ class ObjectDetectionDataset(snt.AbstractModule):
 
             random_number = tf.random_uniform([])
             prob = tf.to_float(aug_config.pop('prob', default_prob))
-            apply_aug_strategy = tf.less(prob, random_number)
+            apply_aug_strategy = tf.less(random_number, prob)
 
             augmented = tf.cond(
                 apply_aug_strategy,
