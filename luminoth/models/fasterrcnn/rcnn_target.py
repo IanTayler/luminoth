@@ -160,6 +160,9 @@ class RCNNTarget(snt.AbstractModule):
         fg_inds = tf.where(
             condition=fg_condition
         )
+        fg_inds = tf.Print(fg_inds,
+                           [tf.shape(fg_inds)[0], tf.shape(gt_boxes)[0]],
+                           message="FG NUM, GT NUM: ")
 
         def disable_some_fgs():
             # We want to delete a randomly-selected subset of fg_inds of
@@ -283,6 +286,15 @@ class RCNNTarget(snt.AbstractModule):
             indices=proposals_with_target_idx,
             updates=bbox_targets_nonzero,
             shape=tf.cast(tf.shape(proposals), tf.int64)
+        )
+        proposals_label = tf.Print(
+            proposals_label,
+            [
+                tf.shape(proposals_with_target)[0],
+                tf.shape(bbox_targets_nonzero)[0]
+            ],
+            message="PROPS_W_TRGT, NUM_BBX_TRGT: ",
+            summarize=25
         )
 
         return proposals_label, bbox_targets

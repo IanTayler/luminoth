@@ -313,6 +313,12 @@ class RCNN(snt.AbstractModule):
                     cls_target_labeled, depth=self._num_classes,
                     name='cls_target_one_hot'
                 )
+                cls_target_one_hot = tf.Print(
+                    cls_target_one_hot,
+                    [cls_target_one_hot, cls_target_labeled],
+                    message="CLS_TRGT_1_HOT, CLS_TRGT_LABELD: ",
+                    summarize=25
+                )
 
                 # cls_target now is (num_labeled, num_classes)
                 bbox_flatten = tf.reshape(
@@ -325,6 +331,10 @@ class RCNN(snt.AbstractModule):
 
                 bbox_offset_cleaned = tf.boolean_mask(
                     bbox_flatten, cls_flatten, 'bbox_offset_cleaned')
+                bbox_offset_cleaned = tf.Print(
+                    bbox_offset_cleaned, [bbox_offset_cleaned],
+                    message="BBOX OFFS CLEANED: ", summarize=25
+                )
 
                 # Calculate the smooth l1 loss between the "cleaned" bboxes
                 # offsets (that means, the useful results) and the labeled
