@@ -100,7 +100,10 @@ class FasterRCNN(snt.AbstractModule):
         # its shape should be `(feature_height, feature_width, 512)`.
         # The shape depends of the pretrained network in use.
         pretrained_prediction = self.pretrained(image)
-        pretrained_feature_map = pretrained_prediction['net']
+        pretrained_feature_map_notnorm = pretrained_prediction['net']
+        pretrained_feature_map = snt.BatchNorm(update_ops_collection=None)(
+            pretrained_feature_map_notnorm, is_training=training
+        )
 
         # The RPN submodule which generates proposals of objects.
         self._rpn = RPN(
@@ -118,7 +121,13 @@ class FasterRCNN(snt.AbstractModule):
         image_shape = tf.shape(image)[1:3]
 
         variable_summaries(
-            pretrained_feature_map, 'pretrained_feature_map', ['rpn'])
+            pretrained_feature_map_notnorm, 'pretrained_feature_map_notnorm',
+            ['rpn']
+        )
+        variable_summaries(
+            pretrained_feature_map, 'pretrained_feature_map',
+            ['rpn']
+        )
 
         # Generate anchors for the image based on the anchor reference.
         all_anchors = self._generate_anchors(pretrained_feature_map)
