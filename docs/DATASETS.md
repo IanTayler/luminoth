@@ -28,4 +28,5 @@ You can use the `--limit-examples and `--limit-classes` options for this.
 For more information, try `lumi dataset transform --help`.
 
 ## Supporting your own dataset
-TODO guidelines on how to write your own conversion tool
+
+[/luminoth/tools/dataset/dataset.py](/luminoth/tools/dataset/dataset.py)
