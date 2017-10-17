@@ -120,6 +120,38 @@ def change_order(bboxes):
         return bboxes
 
 
+def bboxes_to_relative_coord(proposals, im_shape):
+    """
+    Gets normalized coordinates for RoIs (between 0 and 1 for cropping)
+    in TensorFlow's order (y1, x1, y2, x2).
+
+    Args:
+        roi_proposals: A Tensor with the bounding boxes of shape
+            (total_proposals, 5), where the values for each proposal are
+            (batch_num, x_min, y_min, x_max, y_max).
+        im_shape: A Tensor with the shape of the image (height, width).
+
+    Returns:
+        bboxes: A Tensor with normalized bounding boxes in TensorFlow's
+            format order. Its shape is (total_proposals, 4).
+    """
+    with tf.name_scope('get_bboxes'):
+        im_shape = tf.cast(im_shape, tf.float32)
+
+        x1, y1, x2, y2 = tf.unstack(
+            proposals, axis=1
+        )
+
+        x1 = x1 / im_shape[1]
+        y1 = y1 / im_shape[0]
+        x2 = x2 / im_shape[1]
+        y2 = y2 / im_shape[0]
+
+        bboxes = tf.stack([x1, y1, x2, y2], axis=1)
+
+        return bboxes
+
+
 if __name__ == '__main__':
     import numpy as np
 

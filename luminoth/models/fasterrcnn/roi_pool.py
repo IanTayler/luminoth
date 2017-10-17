@@ -1,6 +1,8 @@
 import sonnet as snt
 import tensorflow as tf
 
+from luminoth.utils.bbox_transform_tf import change_order, bboxes_to_relative_coord
+
 # Types of RoI "pooling"
 CROP = 'crop'
 ROI_POOLING = 'roi_pooling'
@@ -50,20 +52,9 @@ class ROIPoolingLayer(snt.AbstractModule):
                 format order. Its should is (total_proposals, 4).
         """
         with tf.name_scope('get_bboxes'):
-            im_shape = tf.cast(im_shape, tf.float32)
-
-            _, x1, y1, x2, y2 = tf.unstack(
-                roi_proposals, axis=1
-            )
-
-            x1 = x1 / im_shape[1]
-            y1 = y1 / im_shape[0]
-            x2 = x2 / im_shape[1]
-            y2 = y2 / im_shape[0]
-
-            bboxes = tf.stack([y1, x1, y2, x2], axis=1)
-
-            return bboxes
+            return change_order(bboxes_to_relative_coord(
+                roi_proposals[:, 1:], im_shape
+            ))
 
     def _roi_crop(self, roi_proposals, conv_feature_map, im_shape):
         # Get normalized bounding boxes.
@@ -74,7 +65,7 @@ class ROIPoolingLayer(snt.AbstractModule):
         # Apply crop and resize with extracting a crop double the desired size.
         crops = tf.image.crop_and_resize(
             conv_feature_map, bboxes, batch_ids,
-            [self._pooled_width * 2, self._pooled_height * 2], name="crops"
+            [self._pooled_height * 2, self._pooled_width * 2], name="crops"
         )
 
         # Applies max pool with [2,2] kernel to reduce the crops two half the

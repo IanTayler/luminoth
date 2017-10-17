@@ -1,9 +1,11 @@
 from luminoth.models.fasterrcnn import FasterRCNN
+from luminoth.models.rfcn import RFCN
 
 
 # TODO: More models :)
 MODELS = {
     'fasterrcnn': FasterRCNN,
+    'rfcn': RFCN,
 }
 
 
