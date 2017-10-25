@@ -1,0 +1,55 @@
+# KEY:
+# AMIP: as mentioned in the paper
+
+model:
+  type: retina
+  anchors:
+    # Num anchors per position
+    num_anchors: 9  # AMIP
+    # Base size to use for anchors
+    base_size: 256
+    # Aspect ratios used for generating anchors
+    ratios: [0.5, 1, 2]
+    # Stride depending on feature map size (of pretrained)
+    stride: 16
+  network:
+    num_classes: 20
+  fpn:
+    num_channels: 256  # AMIP
+    architecture: vgg_16
+    train_base: True
+    endpoints:
+      - 'conv5/conv5_3'
+      - 'conv4/conv4_3'
+      - 'conv3/conv3_3'
+
+  loss:
+    gamma: 2.0
+    alpha_balance: True
+
+  box_subnet:
+    hidden:
+      depth: 4
+      channels: 256
+      kernel_shape: [3, 3]
+      activation: relu
+    final:
+      kernel_shape: [3, 3]
+      activation: sigmoid
+
+  class_subnet:
+    hidden:
+      depth: 4
+      channels: 256
+      kernel_shape: [3, 3]
+      activation: relu
+    final:
+      kernel_shape: [3, 3]
+      activation: sigmoid
+
+dataset:
+  type: tfrecord
+
+train:
+  debug: False
+  seed:
